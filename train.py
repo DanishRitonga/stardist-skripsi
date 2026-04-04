@@ -32,10 +32,6 @@ def _fill_holes(Y: list) -> list:
     return [fill_label_holes(y) for y in Y]
 
 
-def _concat(a: list, b: list) -> list:
-    return a + b
-
-
 # ── Model builder ─────────────────────────────────────────────────────────────
 
 
@@ -68,22 +64,20 @@ def train(
     max_samples: int | None = None,
 ) -> None:
     # ── Load data ──
+    # fold1 = train, fold2 = validation, fold3 = test (held out)
     print("Loading fold1 (train)...")
-    X1, Y1, C1 = load_fold_cached("fold1", use_classes=use_classes, max_samples=max_samples)
+    X_tr, Y_tr, C_tr = load_fold_cached("fold1", use_classes=use_classes, max_samples=max_samples)
 
-    print("Loading fold2 (train)...")
-    X2, Y2, C2 = load_fold_cached("fold2", use_classes=use_classes, max_samples=max_samples)
-
-    print("Loading fold3 (validation)...")
+    print("Loading fold2 (validation)...")
     X_val, Y_val, C_val = load_fold_cached(
-        "fold3", use_classes=use_classes, max_samples=max_samples
+        "fold2", use_classes=use_classes, max_samples=max_samples
     )
 
-    X_tr = _concat(X1, X2)
-    Y_tr = _fill_holes(_concat(Y1, Y2))
+    Y_tr = _fill_holes(Y_tr)
     Y_val = _fill_holes(Y_val)
 
-    C_tr = _concat(C1, C2) if use_classes else None  # type: ignore[arg-type]
+    if not use_classes:
+        C_tr = None
 
     # ── Build model ──
     model = build_model(use_classes)

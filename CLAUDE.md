@@ -14,7 +14,7 @@ source .venv/bin/activate
 ## Commands
 
 ```bash
-# Full training run (fold1+fold2 → train, fold3 → val)
+# Full training run (fold1 → train, fold2 → val, fold3 → test/held out)
 python main.py train
 
 # Quick smoke test (caps each fold at N samples, skips disk cache)

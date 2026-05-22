@@ -74,13 +74,15 @@ def evaluate(
     iou_threshold: float = 0.5,
     prob_thresh: float | None = None,
     nms_thresh: float | None = None,
+    model_name: str = MODEL_NAME,
+    model_basedir: str = MODEL_BASEDIR,
 ) -> dict:
     print("Loading fold3 (test)...")
     X_test, Y_test, C_test = load_fold_cached(
         "fold3", use_classes=use_classes, max_samples=max_samples
     )
 
-    model = load_model()
+    model = load_model(name=model_name, basedir=model_basedir)
 
     bpq_tp = 0
     bpq_fp = 0
@@ -176,6 +178,8 @@ if __name__ == "__main__":
     parser.add_argument("--no-classes", action="store_true")
     parser.add_argument("--max-samples", type=int, default=None, metavar="N")
     parser.add_argument("--iou-threshold", type=float, default=0.5)
+    parser.add_argument("--model-name", default=MODEL_NAME)
+    parser.add_argument("--model-basedir", default=MODEL_BASEDIR)
     parser.add_argument("--prob-thresh", type=float, default=None)
     parser.add_argument("--nms-thresh", type=float, default=None)
     args = parser.parse_args()
@@ -186,5 +190,7 @@ if __name__ == "__main__":
         iou_threshold=args.iou_threshold,
         prob_thresh=args.prob_thresh,
         nms_thresh=args.nms_thresh,
+        model_name=args.model_name,
+        model_basedir=args.model_basedir,
     )
     print_results(results)

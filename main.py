@@ -41,6 +41,8 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
         iou_threshold=args.iou_threshold,
         prob_thresh=args.prob_thresh,
         nms_thresh=args.nms_thresh,
+        model_name=args.model_name,
+        model_basedir=args.model_basedir,
     )
     print_results(results)
 
@@ -87,6 +89,8 @@ def main() -> None:
     e.add_argument("--no-classes", action="store_true", help="Skip per-class mPQ")
     e.add_argument("--max-samples", type=_positive_int, default=None, metavar="N")
     e.add_argument("--iou-threshold", type=float, default=0.5)
+    e.add_argument("--model-name", default=MODEL_NAME)
+    e.add_argument("--model-basedir", default=MODEL_BASEDIR)
     e.add_argument("--prob-thresh", type=float, default=None)
     e.add_argument("--nms-thresh", type=float, default=None)
 

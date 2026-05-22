@@ -32,6 +32,19 @@ def cmd_predict(args: argparse.Namespace) -> None:
         print(f"Saved → {args.output}")
 
 
+def cmd_evaluate(args: argparse.Namespace) -> None:
+    from evaluate import evaluate, print_results
+
+    results = evaluate(
+        use_classes=not args.no_classes,
+        max_samples=args.max_samples,
+        iou_threshold=args.iou_threshold,
+        prob_thresh=args.prob_thresh,
+        nms_thresh=args.nms_thresh,
+    )
+    print_results(results)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="stardist-skripsi",
@@ -69,12 +82,22 @@ def main() -> None:
     p.add_argument("--prob-thresh", type=float, default=None)
     p.add_argument("--nms-thresh", type=float, default=None)
 
+    # ── evaluate ──
+    e = sub.add_parser("evaluate", help="Evaluate model on PanNuke fold3 (mPQ / bPQ)")
+    e.add_argument("--no-classes", action="store_true", help="Skip per-class mPQ")
+    e.add_argument("--max-samples", type=_positive_int, default=None, metavar="N")
+    e.add_argument("--iou-threshold", type=float, default=0.5)
+    e.add_argument("--prob-thresh", type=float, default=None)
+    e.add_argument("--nms-thresh", type=float, default=None)
+
     args = parser.parse_args()
 
     if args.command == "train":
         cmd_train(args)
     elif args.command == "predict":
         cmd_predict(args)
+    elif args.command == "evaluate":
+        cmd_evaluate(args)
 
 
 if __name__ == "__main__":

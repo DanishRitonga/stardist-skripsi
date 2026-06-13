@@ -43,6 +43,7 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
         nms_thresh=args.nms_thresh,
         model_name=args.model_name,
         model_basedir=args.model_basedir,
+        benchmark=not args.no_benchmark,
     )
     print_results(results)
 
@@ -85,7 +86,7 @@ def main() -> None:
     p.add_argument("--nms-thresh", type=float, default=None)
 
     # ── evaluate ──
-    e = sub.add_parser("evaluate", help="Evaluate model on PanNuke fold3 (mPQ / bPQ)")
+    e = sub.add_parser("evaluate", help="Evaluate model on PanNuke fold3 (LSP-DETR protocol)")
     e.add_argument("--no-classes", action="store_true", help="Skip per-class mPQ")
     e.add_argument("--max-samples", type=_positive_int, default=None, metavar="N")
     e.add_argument("--iou-threshold", type=float, default=0.5)
@@ -93,6 +94,7 @@ def main() -> None:
     e.add_argument("--model-basedir", default=MODEL_BASEDIR)
     e.add_argument("--prob-thresh", type=float, default=None)
     e.add_argument("--nms-thresh", type=float, default=None)
+    e.add_argument("--no-benchmark", action="store_true", help="Skip inference timing")
 
     args = parser.parse_args()
 

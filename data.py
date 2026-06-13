@@ -17,6 +17,46 @@ DATA_DIR = Path("data")
 # PanNuke cell-type classes (0-indexed, matching `categories` field values)
 CELL_TYPES = ["Neoplastic", "Inflammatory", "Connective", "Dead", "Epithelial"]
 
+# PanNuke tissue types (index = tissue ID, matches RayCastED global_tissue_map)
+TISSUE_TYPES = [
+    "Adrenal", "BileDuct", "Bladder", "Breast", "Cervix", "Colorectal",
+    "Esophagus", "Head&Neck", "Kidney", "Liver", "Lung", "Ovarian",
+    "Pancreatic", "Prostate", "Skin", "Stomach", "Testis", "Thyroid", "Uterus",
+]
+
+# Map HuggingFace tissue strings → integer index (matches RayCastED pannuke.yaml)
+_TISSUE_MAP: dict[str, int] = {
+    "Adrenal Gland": 0,
+    "Bile Duct": 1,
+    "Bladder": 2,
+    "Breast": 3,
+    "Cervix": 4,
+    "Colorectal": 5,
+    "Esophagus": 6,
+    "Head & Neck": 7,
+    "Kidney": 8,
+    "Liver": 9,
+    "Lung": 10,
+    "Ovarian": 11,
+    "Pancreatic": 12,
+    "Prostate": 13,
+    "Skin": 14,
+    "Stomach": 15,
+    "Testis": 16,
+    "Thyroid": 17,
+    "Uterus": 18,
+}
+
+
+def _resolve_tissue(raw: object) -> int:
+    """Map a PanNuke tissue value (str or int) to the canonical 0–18 index."""
+    if isinstance(raw, (int, np.integer)):
+        return int(raw)
+    s = str(raw).strip()
+    if s.isdigit():
+        return int(s)
+    return _TISSUE_MAP.get(s, 0)
+
 
 # ── Mask utilities ────────────────────────────────────────────────────────────
 
@@ -89,6 +129,7 @@ def _save_fold(
     X: list[np.ndarray],
     Y: list[np.ndarray],
     C: list[dict[int, int]] | None,
+    T: list[int] | None = None,
 ) -> None:
     d = _fold_dir(fold_name)
     d.mkdir(parents=True, exist_ok=True)
@@ -97,13 +138,17 @@ def _save_fold(
     if C is not None:
         with open(d / "C.json", "w") as f:
             json.dump(C, f)
+    if T is not None:
+        with open(d / "T.json", "w") as f:
+            json.dump(T, f)
     print(f"Cached {fold_name} → {d}/")
 
 
 def _load_fold_from_disk(
     fold_name: str,
     use_classes: bool,
-) -> tuple[list[np.ndarray], list[np.ndarray], list[dict[int, int]] | None]:
+    load_tissue: bool = False,
+) -> tuple[list[np.ndarray], list[np.ndarray], list[dict[int, int]] | None, list[int] | None]:
     d = _fold_dir(fold_name)
     # mmap_mode='r' pages data from disk on demand — only accessed regions
     # are loaded into RAM, which acts as lazy loading for StarDist's random
@@ -122,7 +167,14 @@ def _load_fold_from_disk(
             # JSON round-trips dict keys as strings; restore to int.
             C = [{int(k): v for k, v in entry.items()} for entry in raw]
 
-    return X, Y, C
+    T: list[int] | None = None
+    if load_tissue:
+        t_path = d / "T.json"
+        if t_path.exists():
+            with open(t_path) as f:
+                T = json.load(f)
+
+    return X, Y, C, T
 
 
 # ── Dataset loading ───────────────────────────────────────────────────────────
@@ -132,7 +184,8 @@ def load_fold(
     fold_name: str,
     use_classes: bool = True,
     max_samples: int | None = None,
-) -> tuple[list[np.ndarray], list[np.ndarray], list[dict[int, int]] | None]:
+    load_tissue: bool = False,
+) -> tuple[list[np.ndarray], list[np.ndarray], list[dict[int, int]] | None, list[int] | None]:
     """
     Load and preprocess one PanNuke fold from Hugging Face (streaming).
 
@@ -140,12 +193,14 @@ def load_fold(
         fold_name:    One of "fold1", "fold2", "fold3".
         use_classes:  If True, also return per-pixel class maps for class-aware training.
         max_samples:  Optionally cap the number of samples (useful for quick tests).
+        load_tissue:  If True, also return per-image tissue type indices (0–18).
 
     Returns:
         X:       List of float32 RGB images normalized to [0, 1], shape (H, W, 3).
         Y:       List of int32 instance label maps, shape (H, W).
         classes: List of class dicts {instance_id: class_id}, or None if use_classes=False.
                  Class values are 1-indexed; 0 = background.
+        tissues: List of tissue type indices (0–18), or None if load_tissue=False.
     """
     if max_samples is not None and max_samples < 1:
         raise ValueError(f"max_samples must be >= 1, got {max_samples}")
@@ -157,6 +212,7 @@ def load_fold(
     X: list[np.ndarray] = []
     Y: list[np.ndarray] = []
     C: list[dict[int, int]] | None = [] if use_classes else None
+    T: list[int] | None = [] if load_tissue else None
 
     for i, sample in enumerate(tqdm(split, desc=fold_name, unit="img")):
         img = np.array(sample["image"]).astype(np.float32)  # (H, W, 3)
@@ -183,20 +239,23 @@ def load_fold(
         Y.append(inst_map)
         if use_classes:
             C.append(build_class_dict(categories))  # type: ignore[union-attr]
+        if load_tissue:
+            T.append(_resolve_tissue(sample.get("tissue", 0)))  # type: ignore[union-attr]
 
         # gc.collect() every N iterations — reference counting handles most
         # frees immediately; GC is only needed for any residual PIL cycles.
         if i % 100 == 0:
             gc.collect()
 
-    return X, Y, C
+    return X, Y, C, T
 
 
 def load_fold_cached(
     fold_name: str,
     use_classes: bool = True,
     max_samples: int | None = None,
-) -> tuple[list[np.ndarray], list[np.ndarray], list[dict[int, int]] | None]:
+    load_tissue: bool = False,
+) -> tuple[list[np.ndarray], list[np.ndarray], list[dict[int, int]] | None, list[int] | None]:
     """
     Load a PanNuke fold, using a local disk cache when available.
 
@@ -212,13 +271,21 @@ def load_fold_cached(
         if use_classes and not (d / "C.json").exists():
             # Cache was built with --no-classes; re-download so class data is saved.
             print(f"Cache for {fold_name} has no class data; re-downloading...")
+        elif load_tissue and not (d / "T.json").exists():
+            # Cache was built before tissue support; re-download.
+            print(f"Cache for {fold_name} has no tissue data; re-downloading...")
         else:
             print(f"Loading {fold_name} from disk cache ({d})...")
-            return _load_fold_from_disk(fold_name, use_classes)
+            return _load_fold_from_disk(fold_name, use_classes, load_tissue)
 
-    X, Y, C = load_fold(fold_name, use_classes=use_classes, max_samples=max_samples)
+    X, Y, C, T = load_fold(
+        fold_name,
+        use_classes=use_classes,
+        max_samples=max_samples,
+        load_tissue=load_tissue,
+    )
 
     if max_samples is None:
-        _save_fold(fold_name, X, Y, C)
+        _save_fold(fold_name, X, Y, C, T)
 
-    return X, Y, C
+    return X, Y, C, T

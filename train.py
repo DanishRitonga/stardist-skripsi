@@ -66,10 +66,10 @@ def train(
     # ── Load data ──
     # fold1 = train, fold2 = validation, fold3 = test (held out)
     print("Loading fold1 (train)...")
-    X_tr, Y_tr, C_tr = load_fold_cached("fold1", use_classes=use_classes, max_samples=max_samples)
+    X_tr, Y_tr, C_tr, _ = load_fold_cached("fold1", use_classes=use_classes, max_samples=max_samples)
 
     print("Loading fold2 (validation)...")
-    X_val, Y_val, C_val = load_fold_cached(
+    X_val, Y_val, C_val, _ = load_fold_cached(
         "fold2", use_classes=use_classes, max_samples=max_samples
     )
 

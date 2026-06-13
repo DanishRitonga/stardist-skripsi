@@ -1239,7 +1239,7 @@ wheels = [
 [[package]]
 name = "stardist-skripsi"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "csbdeep" },
     { name = "datasets" },

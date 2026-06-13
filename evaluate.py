@@ -55,7 +55,7 @@ def label_map_to_centroids(label_map: np.ndarray) -> np.ndarray:
     if n == 0:
         return np.zeros((0, 2), dtype=np.float64)
     labels = range(1, n + 1)
-    coms = center_of_mass(label_map, label_map, labels=labels)
+    coms = center_of_mass(label_map, label_map, index=labels)
     return np.array(coms, dtype=np.float64)  # (N, 2) — (row, col) = (y, x)
 
 

@@ -24,6 +24,9 @@ for layer in km.layers:
     if out_shape is None:
         continue
 
+    if not isinstance(out_shape, (tuple, list)) or len(out_shape) < 3:
+        continue
+
     if cls == "Conv2D":
         kh, kw = layer.kernel.shape[:2]
         in_ch = layer.kernel.shape[2] if len(layer.kernel.shape) == 4 else 1

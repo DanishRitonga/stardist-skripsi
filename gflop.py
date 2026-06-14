@@ -15,7 +15,12 @@ inp = np.zeros((1, 256, 256, 3), dtype=np.float32)
 # Extract intermediate output shapes by building a feature model
 layer_outputs = {}
 for layer in km.layers:
-    layer_outputs[layer.name] = layer.output_shape
+    if type(layer).__name__ == "InputLayer":
+        continue
+    try:
+        layer_outputs[layer.name] = layer.output_shape
+    except (AttributeError, ValueError):
+        pass
 
 total_macs = 0
 for layer in km.layers:
